@@ -23,6 +23,11 @@ public class RunFragment extends Fragment {
 	private RunManager mRunManager;
 	private Run mRun;
 	private Location mLastLocation;
+	
+	public void testConflict(int myResolvedInt){
+		int tempInt = 0;
+		tempInt = myResolvedInt;
+	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
