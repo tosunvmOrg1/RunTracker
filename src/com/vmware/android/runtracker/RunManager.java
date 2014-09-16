@@ -21,6 +21,12 @@ public class RunManager {
     private Context mAppContext;
     private LocationManager mLocationManager;
     
+	public void testConflict(int myResolvedInt){
+		int tempInt = 0;
+		tempInt = myResolvedInt;
+		Log.i(TAG, "Input integer: " + tempInt);
+	}
+    
     private RunManager(Context appContext) {
         mAppContext = appContext;
         mLocationManager = (LocationManager)mAppContext.getSystemService(Context.LOCATION_SERVICE);
