@@ -27,7 +27,8 @@ public class RunFragment extends Fragment {
 	public void testConflict(int myResolvedInt){
 		int tempInt = 0;
 		tempInt = myResolvedInt;
-		// TODO: tempInt will be use later
+		// TODO: tempInt will be used later
+		// Here is fix2.
 	}
 
 	@Override
