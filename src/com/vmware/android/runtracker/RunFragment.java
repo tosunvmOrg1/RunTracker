@@ -27,6 +27,7 @@ public class RunFragment extends Fragment {
 	public void testConflict(int myResolvedInt){
 		int tempInt = 0;
 		tempInt = myResolvedInt;
+		// Change on master by tosunst during tosunvm fix 2
 		// TODO: tempInt will be use later
 	}
 
