@@ -28,7 +28,7 @@ public class RunFragment extends Fragment {
 		int tempInt = 0;
 		tempInt = myResolvedInt;
 		// TODO: tempInt will be used later
-		// Here is fix2.
+		// Here is fix2. Yet another change for fix 2.
 	}
 
 	@Override
