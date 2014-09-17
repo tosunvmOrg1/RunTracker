@@ -28,7 +28,8 @@ public class RunFragment extends Fragment {
 		int tempInt = 0;
 		tempInt = myResolvedInt;
 		// Change on master by tosunst during tosunvm fix 2
-		// TODO: tempInt will be use later
+		// TODO: tempInt will be used later
+		// Here is fix2. Yet another change for fix 2.
 	}
 
 	@Override
