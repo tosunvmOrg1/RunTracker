@@ -2,9 +2,12 @@ package com.vmware.android.runtracker;
 
 import java.util.Date;
 
+import com.vmware.android.runtracker.RunDatabaseHelper.RunCursor;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
@@ -12,6 +15,8 @@ import android.util.Log;
 public class RunManager {
 	
     private static final String TAG = "RunManager";
+    private static final String PREFS_FILE = "runs";
+    private static final String PREF_CURRENT_RUN_ID = "RunManager.currentRunId";
 
     public static final String ACTION_LOCATION = "com.vmware.android.runtracker.ACTION_LOCATION";
     
@@ -20,6 +25,9 @@ public class RunManager {
     private static RunManager sRunManager;
     private Context mAppContext;
     private LocationManager mLocationManager;
+    private RunDatabaseHelper mHelper;
+    private SharedPreferences mPrefs;
+    private long mCurrentRunId;
     
 	public void testConflict(int myResolvedInt){
 		int tempInt = 0;
@@ -30,6 +38,9 @@ public class RunManager {
     private RunManager(Context appContext) {
         mAppContext = appContext;
         mLocationManager = (LocationManager)mAppContext.getSystemService(Context.LOCATION_SERVICE);
+        mHelper = new RunDatabaseHelper(mAppContext);
+        mPrefs = mAppContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+        mCurrentRunId = mPrefs.getLong(PREF_CURRENT_RUN_ID, -1);
     }
     
     public static RunManager get(Context c) {
@@ -107,6 +118,49 @@ public class RunManager {
     	}
     	
     }
-
+    
+    // Database operations
+    // ===================
+    public Run startNewRun() {
+        // insert a run into the db
+        Run run = insertRun();
+        // start tracking the run
+        startTrackingRun(run);
+        return run;
+    }
+    
+    public void startTrackingRun(Run run) {
+        // keep the ID
+    	// This is where you change which run new locations received get assigned to.
+        mCurrentRunId = run.getId();
+        // store it in shared preferences
+        mPrefs.edit().putLong(PREF_CURRENT_RUN_ID, mCurrentRunId).commit();
+        // start location updates
+        startLocationUpdates();
+    }
+    
+    public void stopRun() {
+        stopLocationUpdates();
+        mCurrentRunId = -1;
+        mPrefs.edit().remove(PREF_CURRENT_RUN_ID).commit();
+    }
+    
+    private Run insertRun() {
+        Run run = new Run();
+        run.setId(mHelper.insertRun(run));
+        return run;
+    }
+    
+    public RunCursor queryRuns() {
+        return mHelper.queryRuns();
+    }
+    
+    public void insertLocation(Location loc) {
+        if (mCurrentRunId != -1) {
+            mHelper.insertLocation(mCurrentRunId, loc);
+        } else {
+            Log.e(TAG, "Location received with no tracking run; ignoring.");
+        }
+    }
 
 }
