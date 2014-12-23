@@ -66,7 +66,15 @@ public class RunListFragment extends ListFragment {
         	((RunCursorAdapter)getListAdapter()).notifyDataSetChanged();
         }
     }
-    
+
+    @Override
+    public void onListItemClick(ListView l, View v, int position, long id) {
+        // the id argument will be the Run ID; CursorAdapter gives us this for free
+        Intent i = new Intent(getActivity(), RunActivity.class);
+        i.putExtra(RunActivity.EXTRA_RUN_ID, id);
+        startActivity(i);
+    }
+
     private static class RunCursorAdapter extends CursorAdapter {
         
         private RunCursor mRunCursor;
@@ -94,7 +102,7 @@ public class RunListFragment extends ListFragment {
             String cellText =
                     context.getString(R.string.cell_text, run.getStartDate());
             startDateTextView.setText(cellText);
-            /*
+            
             // If this is the run being tracked bold the text
             if (RunManager.get(context).isTrackingRun(run)){
             	startDateTextView.setTextColor(Color.GREEN);
@@ -105,9 +113,7 @@ public class RunListFragment extends ListFragment {
             	startDateTextView.setTextColor(Color.BLACK);
             	startDateTextView.setText(cellText);
             }
-            //startDateTextView.setText("Run at " + run.getStartDate());
             
-            */
         }
         
     }

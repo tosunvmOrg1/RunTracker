@@ -2,6 +2,7 @@ package com.vmware.android.runtracker;
 
 import java.util.Date;
 
+import com.vmware.android.runtracker.RunDatabaseHelper.LocationCursor;
 import com.vmware.android.runtracker.RunDatabaseHelper.RunCursor;
 
 import android.app.PendingIntent;
@@ -28,13 +29,7 @@ public class RunManager {
     private RunDatabaseHelper mHelper;
     private SharedPreferences mPrefs;
     private long mCurrentRunId;
-    
-	public void testConflict(int myResolvedInt){
-		int tempInt = 0;
-		tempInt = myResolvedInt;
-		Log.i(TAG, "Input integer: " + tempInt);
-	}
-    
+        
     private RunManager(Context appContext) {
         mAppContext = appContext;
         mLocationManager = (LocationManager)mAppContext.getSystemService(Context.LOCATION_SERVICE);
@@ -98,6 +93,10 @@ public class RunManager {
     public boolean isTrackingRun() {
         return getLocationPendingIntent(false) != null;
     }
+
+    public boolean isTrackingRun(Run run) {
+        return run != null && run.getId() == mCurrentRunId;
+    }
     
     private void broadcastLocation(Location location) {
         Intent broadcast = new Intent(ACTION_LOCATION);
@@ -108,12 +107,14 @@ public class RunManager {
     private void displayLocationProviderInfo(LocationManager locationManager) {
     	Location lastKnown = null;
     	for (String provider : locationManager.getAllProviders()){
+    		Log.d(TAG, "======= Provider: " + provider);
     		lastKnown = locationManager.getLastKnownLocation(provider);
-            Date lastKnownLocationTime = new Date(lastKnown.getTime());
-            Log.d(TAG, "======= Provider: " + provider);
-            Log.d(TAG, "Last known location time: " + lastKnownLocationTime);
-            Log.d(TAG, "Last known location accuracy in meters: " + lastKnown.getAccuracy());
-            Log.d(TAG, "Location (lat, lon): (" + lastKnown.getLatitude() + ", " + lastKnown.getLongitude() + ")");
+    		if (lastKnown!= null){
+	            Date lastKnownLocationTime = new Date(lastKnown.getTime());
+	            Log.d(TAG, "Last known location time: " + lastKnownLocationTime);
+	            Log.d(TAG, "Last known location accuracy in meters: " + lastKnown.getAccuracy());
+	            Log.d(TAG, "Location (lat, lon): (" + lastKnown.getLatitude() + ", " + lastKnown.getLongitude() + ")");
+    		}
             Log.d(TAG, "end Provider =======");
     	}
     	
@@ -161,6 +162,28 @@ public class RunManager {
         } else {
             Log.e(TAG, "Location received with no tracking run; ignoring.");
         }
+    }
+    
+    public Run getRun(long id) {
+        Run run = null;
+        RunCursor cursor = mHelper.queryRun(id);
+        cursor.moveToFirst();
+        // if we got a row, get a run
+        if (!cursor.isAfterLast())
+            run = cursor.getRun();
+        cursor.close();
+        return run;
+    }
+    
+    public Location getLastLocationForRun(long runId) {
+        Location location = null;
+        LocationCursor cursor = mHelper.queryLastLocationForRun(runId);
+        cursor.moveToFirst();
+        // if we got a row, get a location
+        if (!cursor.isAfterLast())
+            location = cursor.getLocation();
+        cursor.close();
+        return location;
     }
 
 }
