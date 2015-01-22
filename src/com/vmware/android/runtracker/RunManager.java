@@ -2,9 +2,13 @@ package com.vmware.android.runtracker;
 
 import java.util.Date;
 
+import com.vmware.android.runtracker.RunDatabaseHelper.LocationCursor;
+import com.vmware.android.runtracker.RunDatabaseHelper.RunCursor;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
@@ -12,6 +16,8 @@ import android.util.Log;
 public class RunManager {
 	
     private static final String TAG = "RunManager";
+    private static final String PREFS_FILE = "runs";
+    private static final String PREF_CURRENT_RUN_ID = "RunManager.currentRunId";
 
     public static final String ACTION_LOCATION = "com.vmware.android.runtracker.ACTION_LOCATION";
     
@@ -20,16 +26,16 @@ public class RunManager {
     private static RunManager sRunManager;
     private Context mAppContext;
     private LocationManager mLocationManager;
-    
-	public void testConflict(int myResolvedInt){
-		int tempInt = 0;
-		tempInt = myResolvedInt;
-		Log.i(TAG, "Input integer: " + tempInt);
-	}
-    
+    private RunDatabaseHelper mHelper;
+    private SharedPreferences mPrefs;
+    private long mCurrentRunId;
+        
     private RunManager(Context appContext) {
         mAppContext = appContext;
         mLocationManager = (LocationManager)mAppContext.getSystemService(Context.LOCATION_SERVICE);
+        mHelper = new RunDatabaseHelper(mAppContext);
+        mPrefs = mAppContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+        mCurrentRunId = mPrefs.getLong(PREF_CURRENT_RUN_ID, -1);
     }
     
     public static RunManager get(Context c) {
@@ -87,6 +93,10 @@ public class RunManager {
     public boolean isTrackingRun() {
         return getLocationPendingIntent(false) != null;
     }
+
+    public boolean isTrackingRun(Run run) {
+        return run != null && run.getId() == mCurrentRunId;
+    }
     
     private void broadcastLocation(Location location) {
         Intent broadcast = new Intent(ACTION_LOCATION);
@@ -97,16 +107,83 @@ public class RunManager {
     private void displayLocationProviderInfo(LocationManager locationManager) {
     	Location lastKnown = null;
     	for (String provider : locationManager.getAllProviders()){
+    		Log.d(TAG, "======= Provider: " + provider);
     		lastKnown = locationManager.getLastKnownLocation(provider);
-            Date lastKnownLocationTime = new Date(lastKnown.getTime());
-            Log.d(TAG, "======= Provider: " + provider);
-            Log.d(TAG, "Last known location time: " + lastKnownLocationTime);
-            Log.d(TAG, "Last known location accuracy in meters: " + lastKnown.getAccuracy());
-            Log.d(TAG, "Location (lat, lon): (" + lastKnown.getLatitude() + ", " + lastKnown.getLongitude() + ")");
+    		if (lastKnown!= null){
+	            Date lastKnownLocationTime = new Date(lastKnown.getTime());
+	            Log.d(TAG, "Last known location time: " + lastKnownLocationTime);
+	            Log.d(TAG, "Last known location accuracy in meters: " + lastKnown.getAccuracy());
+	            Log.d(TAG, "Location (lat, lon): (" + lastKnown.getLatitude() + ", " + lastKnown.getLongitude() + ")");
+    		}
             Log.d(TAG, "end Provider =======");
     	}
     	
     }
-
+    
+    // Database operations
+    // ===================
+    public Run startNewRun() {
+        // insert a run into the db
+        Run run = insertRun();
+        // start tracking the run
+        startTrackingRun(run);
+        return run;
+    }
+    
+    public void startTrackingRun(Run run) {
+        // keep the ID
+    	// This is where you change which run new locations received get assigned to.
+        mCurrentRunId = run.getId();
+        // store it in shared preferences
+        mPrefs.edit().putLong(PREF_CURRENT_RUN_ID, mCurrentRunId).commit();
+        // start location updates
+        startLocationUpdates();
+    }
+    
+    public void stopRun() {
+        stopLocationUpdates();
+        mCurrentRunId = -1;
+        mPrefs.edit().remove(PREF_CURRENT_RUN_ID).commit();
+    }
+    
+    private Run insertRun() {
+        Run run = new Run();
+        run.setId(mHelper.insertRun(run));
+        return run;
+    }
+    
+    public RunCursor queryRuns() {
+        return mHelper.queryRuns();
+    }
+    
+    public void insertLocation(Location loc) {
+        if (mCurrentRunId != -1) {
+            mHelper.insertLocation(mCurrentRunId, loc);
+        } else {
+            Log.e(TAG, "Location received with no tracking run; ignoring.");
+        }
+    }
+    
+    public Run getRun(long id) {
+        Run run = null;
+        RunCursor cursor = mHelper.queryRun(id);
+        cursor.moveToFirst();
+        // if we got a row, get a run
+        if (!cursor.isAfterLast())
+            run = cursor.getRun();
+        cursor.close();
+        return run;
+    }
+    
+    public Location getLastLocationForRun(long runId) {
+        Location location = null;
+        LocationCursor cursor = mHelper.queryLastLocationForRun(runId);
+        cursor.moveToFirst();
+        // if we got a row, get a location
+        if (!cursor.isAfterLast())
+            location = cursor.getLocation();
+        cursor.close();
+        return location;
+    }
 
 }

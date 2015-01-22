@@ -3,9 +3,11 @@ package com.vmware.android.runtracker;
 import java.util.Date;
 
 public class Run {
+	private long mId;
     private Date mStartDate;
     
     public Run() {
+    	mId = -1;
         mStartDate = new Date();
     }
 
@@ -21,7 +23,15 @@ public class Run {
         mStartDate = startDate;
     }
     
-    public int getDurationSeconds(long endMillis) {
+    public long getId() {
+		return mId;
+	}
+
+	public void setId(long id) {
+		mId = id;
+	}
+
+	public int getDurationSeconds(long endMillis) {
         return (int)((endMillis - mStartDate.getTime()) / 1000);
     }
 
