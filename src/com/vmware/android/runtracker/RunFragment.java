@@ -7,6 +7,9 @@ import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.app.LoaderManager.LoaderCallbacks;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +19,8 @@ import android.widget.Toast;
 
 public class RunFragment extends Fragment {
     private static final String ARG_RUN_ID = "RUN_ID";
+    private static final int LOAD_RUN = 0;
+    private static final int LOAD_LOCATION = 1;
 
 	private Button mStartButton, mStopButton;
 	private TextView mStartedTextView, mLatitudeTextView, mLongitudeTextView,
@@ -43,8 +48,13 @@ public class RunFragment extends Fragment {
         if (args != null) {
             long runId = args.getLong(ARG_RUN_ID, -1);
             if (runId != -1) {
-            	mRun = mRunManager.getRun(runId);
-            	mLastLocation = mRunManager.getLastLocationForRun(runId);
+            	// Get run details on loader threads instead of on main thread
+            	//  i.e. don't call mRunManager directly
+            	//mRun = mRunManager.getRun(runId);
+                LoaderManager lm = getLoaderManager();
+                lm.initLoader(LOAD_RUN, args, new RunLoaderCallbacks());
+                lm.initLoader(LOAD_LOCATION, args, new LocationLoaderCallbacks());
+            	//mLastLocation = mRunManager.getLastLocationForRun(runId);
             }
         }
 	}
@@ -135,9 +145,14 @@ public class RunFragment extends Fragment {
         
         int durationSeconds = 0;
         if (mLastLocation != null) {
-        	// If you cannot save mRun and recover it upon an application kill you will crash here if 
+        	// 1. If you cannot save mRun and recover it upon an application kill you will crash here if 
         	// you are receiving location updates in the background. mRun will be null.
-            durationSeconds = mRun.getDurationSeconds(mLastLocation.getTime());
+        	// 2. This will also crash with mRun being null when mLocationReceiver tries to update the UI when mRun is being
+        	//    retrieved on the Loader thread from within onCreate(). Interestingly enough this happens if mLastLocation is retrieved on main thread.
+        	//    If mLastLocation is also retrieved on a loader thread you *still* run into this situation.
+        	if (mRun!=null){
+        		durationSeconds = mRun.getDurationSeconds(mLastLocation.getTime());
+        	}
             mLatitudeTextView.setText(Double.toString(mLastLocation.getLatitude()));
             mLongitudeTextView.setText(Double.toString(mLastLocation.getLongitude()));
             mAltitudeTextView.setText(Double.toString(mLastLocation.getAltitude()));
@@ -146,6 +161,48 @@ public class RunFragment extends Fragment {
 
         mStartButton.setEnabled(!started);
         mStopButton.setEnabled(started&&trackingThisRun);
+    }
+	
+    // Inner class for LoaderCallbacks<Run> implementation
+    // =========================
+    private class RunLoaderCallbacks implements LoaderCallbacks<Run> {
+        
+        @Override
+        public Loader<Run> onCreateLoader(int id, Bundle args) {
+            return new RunLoader(getActivity(), args.getLong(ARG_RUN_ID));
+        }
+
+        @Override
+        public void onLoadFinished(Loader<Run> loader, Run run) {
+            mRun = run;
+            updateUI();
+        }
+
+        @Override
+        public void onLoaderReset(Loader<Run> loader) {
+            // do nothing
+        }
+    }
+
+    // Inner class for LoaderCallbacks<Location> implementation
+    // =========================
+    private class LocationLoaderCallbacks implements LoaderCallbacks<Location> {
+        
+        @Override
+        public Loader<Location> onCreateLoader(int id, Bundle args) {
+            return new LastLocationLoader(getActivity(), args.getLong(ARG_RUN_ID));
+        }
+
+        @Override
+        public void onLoadFinished(Loader<Location> loader, Location location) {
+            mLastLocation = location;
+            updateUI();
+        }
+
+        @Override
+        public void onLoaderReset(Loader<Location> loader) {
+            // do nothing
+        }
     }
 
 }
