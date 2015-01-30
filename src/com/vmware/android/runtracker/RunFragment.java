@@ -50,11 +50,9 @@ public class RunFragment extends Fragment {
             if (runId != -1) {
             	// Get run details on loader threads instead of on main thread
             	//  i.e. don't call mRunManager directly
-            	//mRun = mRunManager.getRun(runId);
                 LoaderManager lm = getLoaderManager();
                 lm.initLoader(LOAD_RUN, args, new RunLoaderCallbacks());
                 lm.initLoader(LOAD_LOCATION, args, new LocationLoaderCallbacks());
-            	//mLastLocation = mRunManager.getLastLocationForRun(runId);
             }
         }
 	}
